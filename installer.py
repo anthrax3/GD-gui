@@ -30,11 +30,33 @@ else:
 
 filelogger = Filelogger("FWBUILDER-AHTAPOT",'%(asctime)s %(name)s %(levelname)s %(message)s',"/var/log/ahtapot/gdys-gui.log","a",user)
 
+def add_kerneltz(folder_path, file_name):
+
+    try:
+        cp_file = folder_path + file_name + ".tmp"
+        org_file = folder_path + file_name
+        p = subprocess.Popen(["grep","m time --kerneltz",org_file], stdout=subprocess.PIPE)
+        out, err = p.communicate()
+        if len(out) == 0:
+            sed_cmd = "sed \"s/ -m time / -m time --kerneltz /g\" " + org_file + " > " + cp_file + " ; mv " + cp_file + \
+                  " " + org_file
+            subprocess.call([sed_cmd], shell=True)
+    except Exception as e:
+        filelogger.send_log("error"," while adding --kerneltz parameter : "+str(e))
+
 def main():
     fw_path = CP.get_configs()['fw_path']
     git_master_branch = CP.get_configs()['git_master_branch']
     git_project_id = int(CP.get_configs()['git_project_id'])
-
+	
+	files = []
+    for (dirpath, dirnames, file_names) in walk(fw_path):
+        files.extend(file_names) #get filenames
+        break
+    for x in files:
+        f_name, f_extension = os.path.splitext(x)
+        if f_extension == ".fw":
+            add_kerneltz(fw_path, x)
     #check if git runs correctly
     if ahtapot_utils.check_git_status(fw_path)==False:
         print "Git ile ilgili bir hata mevcut, 'git status' komutuyla kontrol ediniz."
